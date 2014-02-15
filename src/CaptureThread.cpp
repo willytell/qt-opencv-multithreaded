@@ -43,13 +43,14 @@ CaptureThread::CaptureThread(SharedImageBuffer *sharedImageBuffer, int deviceNum
     doStop=false;
     sampleNumber=0;
     fpsSum=0;
-    fps.clear();
+    //fps.clear();
     statsData.averageFPS=0;
     statsData.nFramesProcessed=0;
+    rb = sharedImageBuffer->getByDeviceNumber(deviceNumber);
+    num = 0;
 }
 
-void CaptureThread::run()
-{
+void CaptureThread::run() {
     while(1)
     {
         ////////////////////////////////
@@ -71,17 +72,20 @@ void CaptureThread::run()
         // Start timer (used to calculate capture rate)
         t.start();
 
+        int idx=rb->curWrite();
+        FrameData *d=rb->getPointer(idx);
+
         // Synchronize with other streams (if enabled for this stream)
         sharedImageBuffer->sync(deviceNumber);
 
-        // Capture frame (if available)
-        if (!cap.grab())
-            continue;
-
         // Retrieve frame
-        cap.retrieve(grabbedFrame);
+        cap >> grabbedFrame;
         // Add frame to buffer
-        sharedImageBuffer->getByDeviceNumber(deviceNumber)->add(grabbedFrame, dropFrameIfBufferFull);
+        d->frame = grabbedFrame;
+        // Add frame number
+        d->frameNumber = num++;
+        //allow_lapping. This means that we are overwriting old frames which have not been read yet.
+        rb->nextWrite(true);
 
         // Update statistics
         updateFPS(captureTime);
@@ -89,7 +93,7 @@ void CaptureThread::run()
         // Inform GUI of updated statistics
         emit updateStatisticsInGUI(statsData);
     }
-    qDebug() << "Stopping capture thread...";
+    //qDebug() << "Stopping capture thread...";
 }
 
 bool CaptureThread::connectToCamera()
@@ -101,6 +105,13 @@ bool CaptureThread::connectToCamera()
         cap.set(CV_CAP_PROP_FRAME_WIDTH, width);
     if(height != -1)
         cap.set(CV_CAP_PROP_FRAME_HEIGHT, height);
+
+    /*
+    // Capture frame (if available)
+    if (!cap.grab())
+    	continue;
+	*/
+
     // Return result
     return camOpenResult;
 }

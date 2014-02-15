@@ -40,6 +40,8 @@
 #include "Structures.h"
 #include "SharedImageBuffer.h"
 
+#include "MyProcessing.h"
+
 namespace Ui {
     class CameraView;
 }
@@ -52,10 +54,11 @@ class CameraView : public QWidget
         explicit CameraView(QWidget *parent, int deviceNumber, SharedImageBuffer *sharedImageBuffer);
         ~CameraView();
         bool connectToCamera(bool dropFrame, int capThreadPrio, int procThreadPrio, bool createProcThread, int width, int height);
+        ProcessingThread *processingThread;
 
     private:
         Ui::CameraView *ui;
-        ProcessingThread *processingThread;
+        //ProcessingThread *processingThread;
         CaptureThread *captureThread;
         SharedImageBuffer *sharedImageBuffer;
         ImageProcessingSettingsDialog *imageProcessingSettingsDialog;

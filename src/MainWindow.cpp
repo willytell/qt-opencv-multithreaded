@@ -95,7 +95,7 @@ void MainWindow::connectToCamera()
             if(!deviceNumberMap.contains(deviceNumber))
             {
                 // Create ImageBuffer with user-defined size
-                Buffer<Mat> *imageBuffer = new Buffer<Mat>(cameraConnectDialog->getImageBufferSize());
+            	FrameBuffer *imageBuffer = new FrameBuffer(cameraConnectDialog->getImageBufferSize());
                 // Add created ImageBuffer to SharedImageBuffer object
                 sharedImageBuffer->add(deviceNumber, imageBuffer, ui->actionSynchronizeStreams->isChecked());
                 // Create CameraView

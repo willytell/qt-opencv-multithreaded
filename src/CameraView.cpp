@@ -113,33 +113,34 @@ bool CameraView::connectToCamera(bool dropFrameIfBufferFull, int capThreadPrio, 
     if(captureThread->connectToCamera())
     {
         // Create processing thread
-        processingThread = new ProcessingThread(sharedImageBuffer, deviceNumber);
+        //processingThread = new ProcessingThread(sharedImageBuffer, deviceNumber);
+    	processingThread = new MyProcessing(sharedImageBuffer, deviceNumber);
         // Create image processing settings dialog
         imageProcessingSettingsDialog = new ImageProcessingSettingsDialog(this);
         // Setup signal/slot connections
         connect(processingThread, SIGNAL(newFrame(QImage)), this, SLOT(updateFrame(QImage)));
         connect(processingThread, SIGNAL(updateStatisticsInGUI(struct ThreadStatisticsData)), this, SLOT(updateProcessingThreadStats(struct ThreadStatisticsData)));
         connect(captureThread, SIGNAL(updateStatisticsInGUI(struct ThreadStatisticsData)), this, SLOT(updateCaptureThreadStats(struct ThreadStatisticsData)));
-        connect(imageProcessingSettingsDialog, SIGNAL(newImageProcessingSettings(struct ImageProcessingSettings)), processingThread, SLOT(updateImageProcessingSettings(struct ImageProcessingSettings)));
-        connect(this, SIGNAL(newImageProcessingFlags(struct ImageProcessingFlags)), processingThread, SLOT(updateImageProcessingFlags(struct ImageProcessingFlags)));
-        connect(this, SIGNAL(setROI(QRect)), processingThread, SLOT(setROI(QRect)));
+        //connect(imageProcessingSettingsDialog, SIGNAL(newImageProcessingSettings(struct ImageProcessingSettings)), processingThread, SLOT(updateImageProcessingSettings(struct ImageProcessingSettings)));
+        //connect(this, SIGNAL(newImageProcessingFlags(struct ImageProcessingFlags)), processingThread, SLOT(updateImageProcessingFlags(struct ImageProcessingFlags)));
+        //connect(this, SIGNAL(setROI(QRect)), processingThread, SLOT(setROI(QRect)));
         // Only enable ROI setting/resetting if frame processing is enabled
         if(enableFrameProcessing)
             connect(ui->frameLabel, SIGNAL(newMouseData(struct MouseData)), this, SLOT(newMouseData(struct MouseData)));
         // Set initial data in processing thread
-        emit setROI(QRect(0, 0, captureThread->getInputSourceWidth(), captureThread->getInputSourceHeight()));
-        emit newImageProcessingFlags(imageProcessingFlags);
-        imageProcessingSettingsDialog->updateStoredSettingsFromDialog();
+        //emit setROI(QRect(0, 0, captureThread->getInputSourceWidth(), captureThread->getInputSourceHeight()));
+        //emit newImageProcessingFlags(imageProcessingFlags);
+        //imageProcessingSettingsDialog->updateStoredSettingsFromDialog();
 
         // Start capturing frames from camera
         captureThread->start((QThread::Priority)capThreadPrio);
         // Start processing captured frames (if enabled)
-        if(enableFrameProcessing)
+        //if(enableFrameProcessing)
             processingThread->start((QThread::Priority)procThreadPrio);
 
         // Setup imageBufferBar with minimum and maximum values
         ui->imageBufferBar->setMinimum(0);
-        ui->imageBufferBar->setMaximum(sharedImageBuffer->getByDeviceNumber(deviceNumber)->maxSize());
+        ui->imageBufferBar->setMaximum(sharedImageBuffer->getByDeviceNumber(deviceNumber)->size);
         // Enable "Clear Image Buffer" push button
         ui->clearImageBufferButton->setEnabled(true);
         // Set text in labels
@@ -162,9 +163,12 @@ void CameraView::stopCaptureThread()
     qDebug() << "[" << deviceNumber << "] About to stop capture thread...";
     captureThread->stop();
     sharedImageBuffer->wakeAll(); // This allows the thread to be stopped if it is in a wait-state
+
+    /* NOT NEEDED MORE, NOW IT'S A RING-BUFFER
     // Take one frame off a FULL queue to allow the capture thread to finish
     if(sharedImageBuffer->getByDeviceNumber(deviceNumber)->isFull())
         sharedImageBuffer->getByDeviceNumber(deviceNumber)->get();
+    */
     captureThread->wait();
     qDebug() << "[" << deviceNumber << "] Capture thread successfully stopped.";
 }
@@ -180,11 +184,13 @@ void CameraView::stopProcessingThread()
 
 void CameraView::updateCaptureThreadStats(struct ThreadStatisticsData statData)
 {
+	/* REVIEW STATS BECAUSE NOW IS A RING-BUFFER
     // Show [number of images in buffer / image buffer size] in imageBufferLabel
     ui->imageBufferLabel->setText(QString("[")+QString::number(sharedImageBuffer->getByDeviceNumber(deviceNumber)->size())+
                                   QString("/")+QString::number(sharedImageBuffer->getByDeviceNumber(deviceNumber)->maxSize())+QString("]"));
     // Show percentage of image bufffer full in imageBufferBar
     ui->imageBufferBar->setValue(sharedImageBuffer->getByDeviceNumber(deviceNumber)->size());
+	*/
 
     // Show processing rate in captureRateLabel
     ui->captureRateLabel->setText(QString::number(statData.averageFPS)+" fps");
@@ -196,11 +202,13 @@ void CameraView::updateProcessingThreadStats(struct ThreadStatisticsData statDat
 {
     // Show processing rate in processingRateLabel
     ui->processingRateLabel->setText(QString::number(statData.averageFPS)+" fps");
+    /*
     // Show ROI information in roiLabel
     ui->roiLabel->setText(QString("(")+QString::number(processingThread->getCurrentROI().x())+QString(",")+
                           QString::number(processingThread->getCurrentROI().y())+QString(") ")+
                           QString::number(processingThread->getCurrentROI().width())+
                           QString("x")+QString::number(processingThread->getCurrentROI().height()));
+	*/
     // Show number of frames processed in nFramesProcessedLabel
     ui->nFramesProcessedLabel->setText(QString("[") + QString::number(statData.nFramesProcessed) + QString("]"));
 }
@@ -213,10 +221,12 @@ void CameraView::updateFrame(const QImage &frame)
 
 void CameraView::clearImageBuffer()
 {
+	/* NOT NEEDED MORE, NOW IT'S A RING-BUFFER
     if(sharedImageBuffer->getByDeviceNumber(deviceNumber)->clear())
         qDebug() << "[" << deviceNumber << "] Image buffer successfully cleared.";
     else
         qDebug() << "[" << deviceNumber << "] WARNING: Could not clear image buffer.";
+	*/
 }
 
 void CameraView::setImageProcessingSettings()
@@ -246,20 +256,24 @@ void CameraView::updateMouseCursorPosLabel()
             double xScalingFactor=((double) ui->frameLabel->getMouseCursorPos().x() - ((ui->frameLabel->width() - ui->frameLabel->pixmap()->width()) / 2)) / (double) ui->frameLabel->pixmap()->width();
             double yScalingFactor=((double) ui->frameLabel->getMouseCursorPos().y() - ((ui->frameLabel->height() - ui->frameLabel->pixmap()->height()) / 2)) / (double) ui->frameLabel->pixmap()->height();
 
+            /*
             ui->mouseCursorPosLabel->setText(ui->mouseCursorPosLabel->text()+
                                              QString(" [")+QString::number((int)(xScalingFactor*processingThread->getCurrentROI().width()))+
                                              QString(",")+QString::number((int)(yScalingFactor*processingThread->getCurrentROI().height()))+
                                              QString("]"));
+            */
         }
         else
         {
             double xScalingFactor=(double) ui->frameLabel->getMouseCursorPos().x() / (double) ui->frameLabel->width();
             double yScalingFactor=(double) ui->frameLabel->getMouseCursorPos().y() / (double) ui->frameLabel->height();
 
+            /*
             ui->mouseCursorPosLabel->setText(ui->mouseCursorPosLabel->text()+
                                              QString(" [")+QString::number((int)(xScalingFactor*processingThread->getCurrentROI().width()))+
                                              QString(",")+QString::number((int)(yScalingFactor*processingThread->getCurrentROI().height()))+
                                              QString("]"));
+			*/
         }
     }
 }
@@ -283,20 +297,20 @@ void CameraView::newMouseData(struct MouseData mouseData)
         {
             xScalingFactor=((double) mouseData.selectionBox.x() - ((ui->frameLabel->width() - ui->frameLabel->pixmap()->width()) / 2)) / (double) ui->frameLabel->pixmap()->width();
             yScalingFactor=((double) mouseData.selectionBox.y() - ((ui->frameLabel->height() - ui->frameLabel->pixmap()->height()) / 2)) / (double) ui->frameLabel->pixmap()->height();
-            wScalingFactor=(double) processingThread->getCurrentROI().width() / (double) ui->frameLabel->pixmap()->width();
-            hScalingFactor=(double) processingThread->getCurrentROI().height() / (double) ui->frameLabel->pixmap()->height();
+            //wScalingFactor=(double) processingThread->getCurrentROI().width() / (double) ui->frameLabel->pixmap()->width();
+            //hScalingFactor=(double) processingThread->getCurrentROI().height() / (double) ui->frameLabel->pixmap()->height();
         }
         else
         {
             xScalingFactor=(double) mouseData.selectionBox.x() / (double) ui->frameLabel->width();
             yScalingFactor=(double) mouseData.selectionBox.y() / (double) ui->frameLabel->height();
-            wScalingFactor=(double) processingThread->getCurrentROI().width() / (double) ui->frameLabel->width();
-            hScalingFactor=(double) processingThread->getCurrentROI().height() / (double) ui->frameLabel->height();
+            //wScalingFactor=(double) processingThread->getCurrentROI().width() / (double) ui->frameLabel->width();
+            //hScalingFactor=(double) processingThread->getCurrentROI().height() / (double) ui->frameLabel->height();
         }
 
         // Set selection box properties (new ROI)
-        selectionBox.setX(xScalingFactor*processingThread->getCurrentROI().width() + processingThread->getCurrentROI().x());
-        selectionBox.setY(yScalingFactor*processingThread->getCurrentROI().height() + processingThread->getCurrentROI().y());
+        //selectionBox.setX(xScalingFactor*processingThread->getCurrentROI().width() + processingThread->getCurrentROI().x());
+        //selectionBox.setY(yScalingFactor*processingThread->getCurrentROI().height() + processingThread->getCurrentROI().y());
         selectionBox.setWidth(wScalingFactor*mouseData.selectionBox.width());
         selectionBox.setHeight(hScalingFactor*mouseData.selectionBox.height());
 
@@ -319,6 +333,7 @@ void CameraView::newMouseData(struct MouseData mouseData)
                 selectionBox.setHeight(height_temp*-1);
             }
 
+            /*
             // Check if selection box is not outside window
             if((selectionBox.x()<0)||(selectionBox.y()<0)||
                ((selectionBox.x()+selectionBox.width())>(processingThread->getCurrentROI().x()+processingThread->getCurrentROI().width()))||
@@ -332,6 +347,7 @@ void CameraView::newMouseData(struct MouseData mouseData)
             // Set ROI
             else
                 emit setROI(selectionBox);
+			*/
         }
     }
 }
